@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17365d">
+  <meta name="description" content="Aplicación estática para analizar datos CMMS localmente, explorar indicadores y exportar informes PDF.">
+  <title>GMAO | Panel de mantenimiento</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="GMAO, inicio">
+      <span class="brand-mark">G</span>
+      <span><strong>GMAO</strong><small>Gestión de mantenimiento</small></span>
+    </a>
+    <div class="topbar-meta"><a href="planes-pm.html">Planes SAP PM</a><span class="live-dot"></span><span>Análisis local seguro</span></div>
+  </header>
+
+  <main class="page-shell">
+    <section class="hero">
+      <div class="hero-brand"><span class="hero-brand-mark" aria-hidden="true">G</span><span><span class="eyebrow">INTELIGENCIA DE MANTENIMIENTO</span><strong>GMAO <span>·</span> ANALÍTICA OPERACIONAL</strong></span></div>
+      <h1>Decisiones de mantenimiento<br class="desktop-break"> con datos confiables.</h1>
+      <p>Un espacio de análisis para explorar actividad, costos y desempeño de mantenimiento. Carga tus datos y obtén resultados en segundos, con procesamiento privado en tu dispositivo.</p>
+    </section>
+
+    <section class="upload-card panel" aria-labelledby="upload-title">
+      <div class="upload-intro">
+        <div class="section-icon" aria-hidden="true">↑</div>
+        <div>
+          <h2 id="upload-title">Carga tus archivos CMMS</h2>
+          <p>Selecciona uno o varios CSV para analizarlos por separado. Los nombres de columna disponibles se detectan automáticamente.</p>
+        </div>
+      </div>
+      <label class="dropzone" id="dropzone" for="fileInput">
+        <span class="upload-symbol" aria-hidden="true">↥</span>
+        <span class="drop-title">Arrastra tus CSV aquí</span>
+        <span class="drop-subtitle">o <span class="link-text">explora tus archivos</span></span>
+        <span class="file-hint">CSV · UTF-8 o Windows-1252 · Procesamiento local</span>
+      </label>
+      <input id="fileInput" type="file" accept=".csv,text/csv" multiple>
+      <div class="upload-actions">
+        <div id="fileList" class="file-list" aria-live="polite">Ningún archivo seleccionado</div>
+        <button id="clearButton" class="button button-quiet" type="button" disabled>Limpiar</button>
+      </div>
+      <div id="loadMessage" class="message" role="status" aria-live="polite"></div>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div class="dashboard-heading">
+        <div>
+          <div class="eyebrow">INTELIGENCIA DE MANTENIMIENTO · INFORME DINÁMICO</div>
+          <h2>Resumen ejecutivo</h2>
+          <p id="datasetSummary" class="muted"></p>
+        </div>
+        <div class="dashboard-controls">
+          <button id="pdfButton" class="button button-primary" type="button" title="Abre la vista de impresión para guardar el informe como PDF">Exportar informe PDF</button>
+        </div>
+      </div>
+
+      <section class="filter-panel" aria-labelledby="filter-heading">
+        <div class="filter-panel-heading"><div><div class="eyebrow">ANÁLISIS SEGMENTADO</div><h3 id="filter-heading">Refinar selección</h3></div><button id="resetFilters" class="button button-quiet" type="button">Restablecer filtros</button></div>
+        <div class="filter-grid">
+          <label class="filter-field" for="groupFilter"><span>Archivo / grupo</span><select id="groupFilter" aria-label="Filtrar por archivo o grupo"></select></label>
+          <label class="filter-field" for="areaFilter"><span>Área</span><select id="areaFilter" aria-label="Filtrar por área"></select></label>
+          <label class="filter-field" for="shiftFilter"><span>Turno</span><select id="shiftFilter" aria-label="Filtrar por turno"></select></label>
+          <label class="filter-field" for="plannerFilter"><span>Grupo planificador</span><select id="plannerFilter" aria-label="Filtrar por grupo planificador"></select></label>
+        </div>
+        <p id="activeFilterSummary" class="filter-summary" aria-live="polite"></p>
+      </section>
+
+      <div id="warningList" class="notice-stack"></div>
+      <section class="quality-card" aria-labelledby="quality-title">
+        <div class="chart-heading"><h3 id="quality-title">Calidad y estructura de los datos</h3><span>por archivo cargado</span></div>
+        <div class="table-scroll"><table><thead><tr><th>Archivo</th><th>Filas</th><th>OT únicas</th><th>Filas con OT repetida</th><th>OT vacías</th><th>Fechas no válidas</th></tr></thead><tbody id="qualityTable"></tbody></table></div>
+      </section>
+      <div id="kpiGrid" class="kpi-grid"></div>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <div><div class="eyebrow">VOLUMEN Y MIX</div><h2>Actividad de mantenimiento</h2></div>
+          <p>Órdenes registradas por fecha de inicio y distribución por categoría.</p>
+        </div>
+        <div class="chart-grid chart-grid-wide">
+          <article class="chart-card"><div class="chart-heading"><h3>Evolución mensual</h3><span>OT / mes</span></div><div id="monthlyChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Tipo de mantenimiento</h3><span>órdenes</span></div><div id="maintenanceChart" class="chart-slot"></div></article>
+        </div>
+        <div class="chart-grid">
+          <article class="chart-card"><div class="chart-heading"><h3>Estados de órdenes</h3><span>órdenes</span></div><div id="statusChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Órdenes por clase</h3><span>órdenes</span></div><div id="classChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Órdenes por área</h3><span>órdenes</span></div><div id="areaChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Planificador</h3><span>órdenes</span></div><div id="plannerChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Indicador ABC</h3><span>órdenes</span></div><div id="abcChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Planificación</h3><span>órdenes</span></div><div id="plannedChart" class="chart-slot"></div></article>
+        </div>
+      </section>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <div><div class="eyebrow">PARETO DE COSTOS</div><h2>¿Dónde se concentra el gasto?</h2></div>
+          <p>Los primeros diez elementos se ordenan por costo total. La curva muestra el porcentaje acumulado del grupo seleccionado.</p>
+        </div>
+        <div class="chart-grid">
+          <article class="chart-card"><div class="chart-heading"><h3>Equipos</h3><span>CLP</span></div><div id="equipmentCostChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Ubicaciones técnicas</h3><span>CLP</span></div><div id="locationCostChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Puestos de trabajo</h3><span>CLP</span></div><div id="workCenterCostChart" class="chart-slot"></div></article>
+        </div>
+      </section>
+
+      <section class="content-section">
+        <div class="section-heading">
+          <div><div class="eyebrow">FRECUENCIA Y TIEMPO</div><h2>Prioridades para revisión</h2></div>
+          <p>La matriz adapta el enfoque Jack-Knife: frecuencia de órdenes versus downtime medio. Los candidatos requieren revisión técnica.</p>
+        </div>
+        <div class="chart-grid chart-grid-wide">
+          <article class="chart-card"><div class="chart-heading"><h3>Frecuencia y downtime medio</h3><span>OT · horas</span></div><div id="priorityChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Tiempo medio de reparación</h3><span>horas</span></div><div id="mttrChart" class="chart-slot"></div></article>
+        </div>
+        <div class="table-card">
+          <div class="chart-heading"><h3>Top 10 equipos por costo</h3><span id="tableGroupLabel"></span></div>
+          <div class="table-scroll"><table><thead><tr><th>Equipo</th><th>OT</th><th>Downtime (h)</th><th>Costo real (CLP)</th></tr></thead><tbody id="topEquipment"></tbody></table></div>
+        </div>
+      </section>
+
+      <section class="method-note">
+        <span class="method-icon" aria-hidden="true">i</span>
+        <div><strong>Cómo interpretar</strong><p>El costo y el downtime son medidas observadas, no causas. El MTTR se calcula para órdenes correctivas cerradas con tiempo de reparación positivo. Los registros sin modo de falla no se usan para caracterizar modos. Valida los hallazgos con el equipo responsable antes de tomar decisiones.</p></div>
+      </section>
+    </section>
+
+    <section class="empty-state" id="emptyState">
+      <div class="empty-art" aria-hidden="true"><span>▤</span><span>↗</span><span>◫</span></div>
+      <h2>Tu análisis empieza con los datos</h2>
+      <p>Carga uno o varios CSV CMMS para ver KPI, calidad de datos, tendencias, áreas, Pareto de costos y prioridades. Los archivos se analizan individualmente.</p>
+    </section>
+
+    <section id="printReport" class="print-report" aria-label="Informe ejecutivo imprimible"></section>
+  </main>
+
+  <footer class="footer">
+    <span>GMAO · Análisis local de mantenimiento</span>
+    <span>Los datos permanecen en tu navegador</span>
+  </footer>
+</body>
+</html>

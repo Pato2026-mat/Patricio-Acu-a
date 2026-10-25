@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17365d">
+  <meta name="description" content="Análisis local de estructura, cobertura y prioridad de revisión de planes de mantenimiento SAP PM desde Excel.">
+  <title>SAP PM | Análisis de planes preventivos</title>
+  <link rel="stylesheet" href="planes-pm.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+  <script src="planes-pm.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="Volver al panel GMAO">
+      <span class="brand-mark">G</span>
+      <span><strong>GMAO</strong><small>Análisis de mantenimiento</small></span>
+    </a>
+    <div class="topbar-meta"><span class="live-dot"></span> Libro procesado localmente</div>
+  </header>
+
+  <main class="page-shell">
+    <section class="hero">
+      <div class="eyebrow">SAP PM · PLANES PREVENTIVOS</div>
+      <h1>De la estructura del plan a su prioridad de revisión.</h1>
+      <p>Carga un libro Excel con exportaciones como IH06, IP18 y ListaObj_Planes. La página inspecciona sus hojas y columnas antes de calcular indicadores; puedes revisar o ajustar los campos detectados.</p>
+    </section>
+
+    <section class="panel upload-card" aria-labelledby="upload-title">
+      <div class="upload-intro">
+        <div class="section-icon" aria-hidden="true">↑</div>
+        <div>
+          <h2 id="upload-title">Carga el libro SAP PM</h2>
+          <p>Se aceptan archivos Excel. No se supone que las columnas tengan un nombre fijo.</p>
+        </div>
+      </div>
+      <label class="dropzone" id="dropzone" for="fileInput">
+        <span class="upload-symbol" aria-hidden="true">↥</span>
+        <span class="drop-title">Arrastra aquí el archivo Excel</span>
+        <span class="drop-subtitle">o <span class="link-text">explora tus archivos</span></span>
+        <span class="file-hint">XLSX · XLS · XLSM · Procesamiento local en el navegador</span>
+      </label>
+      <input id="fileInput" type="file" accept=".xlsx,.xls,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+      <div class="upload-actions">
+        <div id="fileName" class="file-list" aria-live="polite">Ningún archivo seleccionado</div>
+        <button id="clearButton" class="button button-quiet" type="button" disabled>Limpiar</button>
+      </div>
+      <div id="loadMessage" class="message" role="status" aria-live="polite"></div>
+      <div id="libraryMessage" class="library-message" hidden>No se pudo cargar la biblioteca de lectura Excel. Comprueba la conexión a Internet y vuelve a cargar esta página.</div>
+    </section>
+
+    <section id="workbookPanel" class="workbook-panel" hidden>
+      <div class="section-heading">
+        <div><div class="eyebrow">DATOS → CALIDAD</div><h2>Hojas y columnas inspeccionadas</h2></div>
+        <p>Confirma qué hoja y campo representan cada dato. Los nombres originales siempre permanecen visibles.</p>
+      </div>
+      <div id="sheetSummary" class="sheet-grid"></div>
+      <section class="mapping-card panel">
+        <div class="chart-heading"><h3>Revisar mapeo de campos</h3><span>los campos vacíos no se usarán</span></div>
+        <p class="mapping-help">El mapeo se propone usando los encabezados reales; corrígelo si las columnas de tu exportación tienen otro significado.</p>
+        <div id="mappingGrid" class="mapping-grid"></div>
+        <button id="analyzeButton" class="button button-primary" type="button">Actualizar análisis</button>
+      </section>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div class="dashboard-heading">
+        <div><div class="eyebrow">CARACTERIZACIÓN → COBERTURA</div><h2>Resumen de planes preventivos</h2><p id="datasetSummary" class="muted"></p></div>
+        <div class="dashboard-controls">
+          <button id="excelButton" class="button button-quiet" type="button">Descargar resultados Excel</button>
+          <button id="pdfButton" class="button button-primary" type="button">Imprimir / guardar PDF</button>
+        </div>
+      </div>
+      <div id="warningList" class="notice-stack"></div>
+      <section class="quality-card" aria-labelledby="quality-title">
+        <div class="chart-heading"><h3 id="quality-title">Calidad y relaciones entre hojas</h3><span>duplicados e inconsistencias potenciales</span></div>
+        <div class="table-scroll"><table><thead><tr><th>Hoja / comprobación</th><th>Registros</th><th>Hallazgo</th></tr></thead><tbody id="qualityTable"></tbody></table></div>
+      </section>
+      <div id="kpiGrid" class="kpi-grid"></div>
+
+      <section class="content-section">
+        <div class="section-heading"><div><div class="eyebrow">CARACTERIZACIÓN</div><h2>Distribución y Pareto</h2></div><p>Frecuencia por categoría, con proporción acumulada. Se muestran solo variables asignadas a columnas reales.</p></div>
+        <div id="distributionCharts" class="chart-grid"></div>
+      </section>
+
+      <section class="content-section">
+        <div class="section-heading"><div><div class="eyebrow">COMPLEJIDAD → ANTIGÜEDAD</div><h2>Planes y tiempo desde actualización</h2></div><p>La complejidad se aproxima por objetos asociados; la antigüedad se calcula desde la última modificación o, si falta, desde creación.</p></div>
+        <div class="chart-grid chart-grid-wide">
+          <article class="chart-card"><div class="chart-heading"><h3>Complejidad por plan</h3><span>objetos asociados / plan</span></div><div id="complexityChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Complejidad y antigüedad</h3><span>objetos · años desde modificación</span></div><div id="priorityChart" class="chart-slot"></div></article>
+        </div>
+        <div class="table-card">
+          <div class="chart-heading"><h3>Top 20 candidatos prioritarios para revisión</h3><span>IPR exploratorio, no diagnóstico de error</span></div>
+          <div class="table-scroll"><table><thead><tr><th>Plan</th><th>Objetos asociados</th><th>Años desde actualización</th><th>IPR</th><th>Motivo exploratorio</th></tr></thead><tbody id="priorityTable"></tbody></table></div>
+        </div>
+      </section>
+      <section class="content-section">
+        <div class="section-heading"><div><div class="eyebrow">COBERTURA</div><h2>Alcance del mantenimiento preventivo</h2></div><p>La cobertura compara objetos únicos de la hoja de inventario con objetos asociados a planes, usando los identificadores que hayas asignado.</p></div>
+        <div class="chart-grid">
+          <article class="chart-card"><div class="chart-heading"><h3>Cobertura por Indicador ABC</h3><span>objetos con plan / total</span></div><div id="abcCoverageChart" class="chart-slot"></div></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Cobertura por área</h3><span>objetos con plan / total</span></div><div id="areaCoverageChart" class="chart-slot"></div></article>
+        </div>
+      </section>
+      <section class="executive-summary">
+        <div class="eyebrow">CONCLUSIONES</div>
+        <h2>Resumen ejecutivo</h2>
+        <div id="executiveSummary"></div>
+      </section>
+      <section class="method-note">
+        <span class="method-icon" aria-hidden="true">i</span>
+        <div><strong>Alcance e interpretación</strong><p>El IPR es un indicador exploratorio de prioridad de revisión que combina variables disponibles normalizadas; no predice fallas ni afirma que un plan sea incorrecto. La cobertura depende de que los identificadores de IH06 y ListaObj_Planes representen el mismo tipo de objeto. Revisa los mapeos y valida los resultados con responsables de mantenimiento.</p></div>
+      </section>
+    </section>
+
+    <section id="emptyState" class="empty-state">
+      <div class="empty-art" aria-hidden="true"><span>▤</span><span>↗</span><span>◫</span></div>
+      <h2>Comienza con tu archivo Excel</h2>
+      <p>Al cargarlo se mostrarán las hojas y encabezados encontrados. Los análisis que dependan de columnas ausentes aparecerán como no disponibles.</p>
+    </section>
+  </main>
+  <footer class="footer"><span>GMAO · Análisis exploratorio SAP PM</span><span>Los datos permanecen en tu navegador</span></footer>
+</body>
+</html>
